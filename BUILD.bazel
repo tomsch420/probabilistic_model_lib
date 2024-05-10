@@ -1,0 +1,11 @@
+cc_library(
+    name = "probabilistic_model",
+    srcs = glob(["probabilistic_model/src/*.cpp"]),
+    hdrs = glob(["probabilistic_model/include/*h"]),
+    visibility = ["//visibility:public"],
+    includes = [
+        "probabilistic_model",
+        "probabilistic_model/include"
+    ],
+    deps = ["@random_events//:random_events_lib"],
+)
