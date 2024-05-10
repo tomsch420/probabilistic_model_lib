@@ -1,6 +1,10 @@
 #include "gtest/gtest.h"
 #include "probabilistic_model.h"
 #include "interval.h"
+#include "univariate.h"
+#include "variable.h"
+
+auto x = Continuous("x");
 
 TEST(AtomicIntervalCreationTestSuite, SimpleInterval) {
 SimpleInterval interval = SimpleInterval();
@@ -14,6 +18,8 @@ EXPECT_EQ(interval.left, BorderType::OPEN);
 EXPECT_EQ(interval.right, BorderType::CLOSED);
 }
 
-TEST(A, B) {
-ProbabilisticModel model = ProbabilisticModel();
+TEST(UniformDistribution, Likelihood) {
+
+    auto uniform = UniformDistribution();
+
 }
