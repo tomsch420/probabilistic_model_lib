@@ -36,3 +36,8 @@ cmake-build-debug-coverage
 build
 .idea
 doc/doc_out
+.clwb
+bazel-bin
+bazel-out
+bazel-testlogs
+bazel-probabilistic-model-lib
