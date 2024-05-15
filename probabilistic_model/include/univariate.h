@@ -6,8 +6,16 @@
 #include "interval.h"
 #include <cmath>
 #include <utility>
+#include <map>
+
+//FORWARD DECLARATIONS
+class UniformDistribution;
+class DiracDeltaDistribution;
 
 typedef std::shared_ptr<Interval<double>> ContinuousSupportPtr_t;
+typedef std::shared_ptr<UniformDistribution> UniformDistributionPtr_t;
+typedef std::shared_ptr<DiracDeltaDistribution> DiracDeltaDistributionPtr_t;
+
 
 /**
  * Abstract Class for univariate distributions.
@@ -163,7 +171,7 @@ public:
     double location;
     double density_cap;
 
-    DiracDeltaDistribution(const ContinuousPtr_t &variable, double location,
+    DiracDeltaDistribution(const AbstractVariablePtr_t &variable, double location,
                            double density_cap = std::numeric_limits<double>::infinity()) {
         this->variable = variable;
         this->location = location;
@@ -186,6 +194,11 @@ public:
     std::string distribution_representation() const override{
         return "δ(" + std::to_string(location) + ", " + std::to_string(density_cap) + ")";
     }
+
+    template<typename... Args>
+    static DiracDeltaDistributionPtr_t make_shared(Args &&... args) {
+        return std::make_shared<DiracDeltaDistribution>(std::forward<Args>(args)...);
+    };
 };
 
 
@@ -216,7 +229,7 @@ public:
     }
 
     template<typename... Args>
-    static ProbabilisticCircuitPtr_t make_shared(Args &&... args) {
+    static UniformDistributionPtr_t make_shared(Args &&... args) {
         return std::make_shared<UniformDistribution>(std::forward<Args>(args)...);
     };
 };

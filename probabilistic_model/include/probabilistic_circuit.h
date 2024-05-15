@@ -34,8 +34,8 @@ public:
         auto other_variables = other->get_variables();
         auto other_variables_iterator = other_variables->begin();
         int index = 0;
-        for (auto const &variable : *own_variables) {
-            if (variable == *other_variables_iterator){
+        for (auto const &variable: *own_variables) {
+            if (variable == *other_variables_iterator) {
                 result.push_back(index);
                 other_variables_iterator++;
             }
@@ -54,7 +54,7 @@ public:
 
     std::vector<double> weights;
 
-    std::string representation() const override {
+    virtual std::string representation() const override {
         return "+";
     }
 
@@ -68,7 +68,7 @@ public:
         return sum;
     }
 
-    double log_likelihood(const FullEvidencePtr_t &event) const override{
+    double log_likelihood(const FullEvidencePtr_t &event) const override {
         double sum = 0;
         auto current_weight = weights.begin();
         for (auto &sub_circuit: sub_circuits) {
@@ -97,6 +97,15 @@ public:
     }
 
 };
+
+class DeterministicSumUnit : public SmoothSumUnit {
+
+    std::string representation() const override {
+        return "⊕";
+    }
+
+};
+
 
 class DecomposableProductUnit : public ProbabilisticCircuit {
 public:
