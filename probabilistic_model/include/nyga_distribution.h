@@ -17,9 +17,9 @@ class InductionStep;
 
 // TYPEDEFS
 typedef std::vector<double> WeightsVector;
-typedef std::shared_ptr<WeightsVector> WeightsVectorPtr_t;
+typedef WeightsVector *WeightsVectorPtr_t;
 typedef std::vector<double> DataVector;
-typedef std::shared_ptr<DataVector> DataVectorPtr_t;
+typedef DataVector *DataVectorPtr_t;
 
 typedef std::shared_ptr<NygaDistribution> NygaDistributionPtr_t;
 typedef std::shared_ptr<InductionStep> InductionStepPtr_t;
@@ -64,33 +64,27 @@ public:
     /**
      * A pointer to the entire vector of sorted and unique data points.
      */
-    DataVectorPtr_t data_p;
+    const DataVectorPtr_t data_p;
 
     /**
-     * A pointer to the weights of every unique sample in data.
+     * A pointer to the logarithmic weights of every unique sample in data.
      */
-    WeightsVectorPtr_t weights_p;
+    const WeightsVectorPtr_t log_weights_p;
 
     /**
      * The index of the first element of the data vector that is included in this step.
      */
-    size_t begin_index;
+    const size_t begin_index;
 
     /**
      * The index of the first element of the data vector that is not included in this step.
      */
-    size_t end_index;
-
-    /**
-     * The total number of samples in the data vector before it was made unique. This is bigger or equal to the size of
-     * the data vector.
-     */
-    size_t total_number_of_samples;
+    const size_t end_index;
 
     /**
      * The pointer to the Nyga Distribution to mount the quantile distributions into and read the parameters from.
      */
-    NygaDistributionPtr_t nyga_distribution_p;
+    const NygaDistributionPtr_t nyga_distribution_p;
 
 
     /**
@@ -102,14 +96,12 @@ public:
      * @param total_number_of_samples The total number of samples in the data vector before it was made unique.
      * @param nyga_distribution_p The pointer to the Nyga Distribution to mount the quantile distributions into and read the parameters from.
      */
-    explicit InductionStep(const DataVectorPtr_t &data_p, const WeightsVectorPtr_t &weights_p, size_t begin_index,
-                           size_t end_index, size_t total_number_of_samples,
+    explicit InductionStep(const DataVectorPtr_t &data_p, const WeightsVectorPtr_t &log_weights_p, size_t begin_index,
+                           size_t end_index,
                            const NygaDistributionPtr_t &nyga_distribution_p) : data_p(data_p),
-                                                                               weights_p(weights_p),
+                                                                               log_weights_p(log_weights_p),
                                                                                begin_index(begin_index),
                                                                                end_index(end_index),
-                                                                               total_number_of_samples(
-                                                                                       total_number_of_samples),
                                                                                nyga_distribution_p(
                                                                                        nyga_distribution_p) {
     }
@@ -144,6 +136,8 @@ public:
         return (double) data_p->size();
     }
 
+    const double number_of_samples() const;
+
     /**
      * Create a uniform distribution from the datapoint at `begin_index_` to the datapoint at `end_index_`.
      * @param begin_index_  The index of the first datapoint.
@@ -155,16 +149,6 @@ public:
     double log_likelihood_of_split(size_t split_index, double connecting_point) const;
 
     UniformDistributionPtr_t create_uniform_distribution() const;
-
-    /**
-     * Sum the logarithm of the weights from `begin_index_` to `end_index_`.
-     * @param begin_index_ The index of the first weight.
-     * @param end_index_ The index of the excluded last weight.
-     * @return
-     */
-    double sum_log_weights_from_indices(size_t begin_index_, size_t end_index_) const;
-
-    double sum_log_weights() const;
 
     /**
     * Sum the weights from `begin_index_` to `end_index_`.

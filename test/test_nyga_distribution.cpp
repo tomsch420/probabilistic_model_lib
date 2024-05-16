@@ -7,11 +7,10 @@ class NygaDistributionTest : public testing::Test {
 public:
     ContinuousPtr_t variable_x = make_shared_continuous("x");
 
-    DataVectorPtr_t data_p = std::make_shared<DataVector>(DataVector{1, 2, 3, 4, 7, 9});
-    WeightsVectorPtr_t weights_p = std::make_shared<WeightsVector>(
-            WeightsVector{1. / 6., 1. / 6. ,1. / 6. ,1. / 6. ,1. / 6. ,1. / 6.});
+    DataVectorPtr_t data_p = new DataVector{1, 2, 3, 4, 7, 9};
+    WeightsVectorPtr_t weights_p = new WeightsVector{log(1. / 6.), log(1. / 6.), log(1. / 6.), log(1. / 6.),  log(1. / 6.),  log(1. / 6.)};
     NygaDistributionPtr_t model = NygaDistribution::make_shared(variable_x, 1, 0.01);
-    InductionStep induction_step = InductionStep(data_p, weights_p, 0, 6, 6, model);
+    InductionStep induction_step = InductionStep(data_p, weights_p, 0, 6, model);
 
 };
 
@@ -44,8 +43,8 @@ TEST_F(NygaDistributionTest, CreateUniformDistributionEdgeCase){
 }
 
 TEST_F(NygaDistributionTest, SumWeights){
-    ASSERT_DOUBLE_EQ(induction_step.sum_log_weights(), 6 * log(1. / 6));
-    ASSERT_DOUBLE_EQ(induction_step.sum_log_weights_from_indices(3, 5), 2 * log(1. / 6.));
+    ASSERT_DOUBLE_EQ(induction_step.sum_weights(), 6 * log(1. / 6));
+    ASSERT_DOUBLE_EQ(induction_step.sum_weights_from_indices(3, 5), 2 * log(1. / 6.));
 }
 
 TEST_F(NygaDistributionTest, ComputeBestSplit){
@@ -69,16 +68,16 @@ TEST_F(NygaDistributionTest, ComputeBestSplitWithInducedIndices){
 TEST_F(NygaDistributionTest, Fit){
     auto normal = std::normal_distribution<double>(0, 1);
     std::default_random_engine generator(69);
-    auto data = std::make_shared<DataVector>(DataVector(1000));
+    auto data = new DataVector(10000);
     std::generate(data->begin(), data->end(), [&](){return normal(generator);});
 
     model->min_samples_per_quantile = 20;
     auto result = model->fit(data);
-    ASSERT_GE(result->sub_circuits.size(), 1);
+    ASSERT_LE(result->sub_circuits.size(), data->size()/model->min_samples_per_quantile);
 }
 
 TEST_F(NygaDistributionTest, FitWithSingularData){
-    auto data = std::make_shared<DataVector>(DataVector{1, 1, 1});
+    auto data = new DataVector{1, 1, 1};
     auto result = model->fit(data);
     ASSERT_EQ(result->sub_circuits.size(), 1);
     auto subcircuit = std::static_pointer_cast<DiracDeltaDistribution>(result->sub_circuits[0]);

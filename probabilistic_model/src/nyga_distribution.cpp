@@ -41,21 +41,25 @@ NygaDistributionPtr_t  NygaDistribution::fit(const DataVectorPtr_t &data_p) {
     }
 
     // create the data and weights vector
-    auto weights_p = std::make_shared<WeightsVector>();
-    auto sorted_unique_data = std::make_shared<DataVector>();
+    auto weights_p = new WeightsVector();
+    auto sorted_unique_data = new DataVector();
     sorted_unique_data->reserve(frequencies.size());
     weights_p->reserve(frequencies.size());
 
     // write data and weights to new vectors
-    auto total_data_points = (double) data_p->size();
     for (auto &[value, weight]: frequencies) {
-        weights_p->emplace_back(frequencies[value] / total_data_points);
+        weights_p->emplace_back(log(frequencies[value]));
         sorted_unique_data->emplace_back(value);
     }
 
-    auto initial_induction_step = InductionStep::make_shared(data_p, weights_p, 0, frequencies.size(),
-                                                             data_p->size(), result);
-    return fit_with_initial_induction_step(initial_induction_step);
+    auto initial_induction_step = InductionStep::make_shared(data_p, weights_p, 0, frequencies.size(), result);
+    result = fit_with_initial_induction_step(initial_induction_step);
+
+    // clean up
+    delete weights_p;
+    delete sorted_unique_data;
+
+    return result;
 }
 
 NygaDistributionPtr_t  NygaDistribution::fit_with_initial_induction_step(const InductionStepPtr_t &initial_induction_step) {
@@ -120,17 +124,6 @@ UniformDistributionPtr_t InductionStep::create_uniform_distribution() const {
     return create_uniform_distribution_from_indices(begin_index, end_index);
 }
 
-double InductionStep::sum_log_weights_from_indices(size_t begin_index_, size_t end_index_) const {
-    double result = 0;
-    for (size_t i = begin_index_; i < end_index_; i++) {
-        result += log(weights_p->at(i));
-    }
-    return result;
-}
-
-double InductionStep::sum_log_weights() const {
-    return sum_log_weights_from_indices(begin_index, end_index);
-}
 
 std::tuple<double, int> InductionStep::compute_best_split() const {
     double maximum_log_likelihood = -std::numeric_limits<double>::infinity();
@@ -163,19 +156,17 @@ std::tuple<double, int> InductionStep::compute_best_split() const {
 }
 
 InductionStepPtr_t InductionStep::construct_left_induction_step(size_t split_index) const {
-    return InductionStep::make_shared(data_p, weights_p, begin_index, split_index, total_number_of_samples,
-                                      nyga_distribution_p);
+    return InductionStep::make_shared(data_p, log_weights_p, begin_index, split_index, nyga_distribution_p);
 }
 
 InductionStepPtr_t InductionStep::construct_right_induction_step(size_t split_index) const {
-    return InductionStep::make_shared(data_p, weights_p, split_index, end_index, total_number_of_samples,
-                                      nyga_distribution_p);
+    return InductionStep::make_shared(data_p, log_weights_p, split_index, end_index, nyga_distribution_p);
 }
 
 std::optional<std::pair<InductionStepPtr_t, InductionStepPtr_t>> InductionStep::induce() {
-    double number_of_samples_in_this = sum_weights() * (double) total_number_of_samples;
+    double summed_weights = sum_weights();
     double log_pdf = -log(right_connecting_point() - left_connecting_point());
-    double log_likelihood_without_split = log_pdf * number_of_samples_in_this + sum_log_weights();
+    double log_likelihood_without_split = log_pdf + summed_weights;
 
     auto [best_log_likelihood, best_split_index] = compute_best_split();
     if (best_log_likelihood > log_likelihood_without_split +  log(1. + nyga_distribution_p->min_likelihood_improvement)) {
@@ -185,7 +176,7 @@ std::optional<std::pair<InductionStepPtr_t, InductionStepPtr_t>> InductionStep::
 
     // create uniform distribution and mount it into the nyga distribution
     auto distribution = create_uniform_distribution();
-    nyga_distribution_p->add_subcircuit(sum_log_weights(), distribution);
+    nyga_distribution_p->add_subcircuit(summed_weights, distribution);
     return std::nullopt;
 }
 
@@ -194,7 +185,11 @@ double InductionStep::sum_weights() const {
 }
 
 double InductionStep::sum_weights_from_indices(size_t begin_index_, size_t end_index_) const {
-    return std::accumulate(weights_p->begin() + begin_index_, weights_p->begin() + end_index_, 0.0);
+    double result = 0;
+    for (size_t i = begin_index_; i < end_index_; i++) {
+        result += (*log_weights_p)[i];
+    }
+    return result;
 }
 
 double InductionStep::log_likelihood_of_split(size_t split_index, double connecting_point) const {
@@ -206,18 +201,17 @@ double InductionStep::log_likelihood_of_split(size_t split_index, double connect
     bool is_left = density < 0;
 
     // Sum the logarithmic weights that are inside this split
-    double log_weight_sum_of_split = is_left ? sum_log_weights_from_indices(begin_index, split_index)
-                                         : sum_log_weights_from_indices(split_index, end_index);
+    double log_weight_sum_of_split = is_left ? sum_weights_from_indices(begin_index, split_index)
+                                         : sum_weights_from_indices(split_index, end_index);
 
-    // Calculate the number of samples in this split
-    auto sum_of_weights_in_split = is_left ? sum_weights_from_indices(begin_index, split_index)
-                                              : sum_weights_from_indices(split_index, end_index);
-    auto number_of_samples_in_split = sum_of_weights_in_split * (double) total_number_of_samples;
 
     // Calculate the log density assuming a uniform distribution and accumulated it with the number of samples
     auto log_density = -log(fabs(density));
-    auto accumulated_log_density = log_density * number_of_samples_in_split;
 
     // return weighted log likelihood
-    return accumulated_log_density + log_weight_sum_of_split;
+    return log_density + log_weight_sum_of_split;
+}
+
+const double InductionStep::number_of_samples() const {
+    return (double) end_index - begin_index;
 }
